@@ -1781,7 +1781,7 @@ dependencies = [
 [[package]]
 name = "ibc-proto"
 version = "0.46.0"
-source = "git+https://github.com/devashishdxt/ibc-proto-rs.git?branch=ethermint#94045600cb53700ee97e7974e9053a07a6fb70d3"
+source = "git+https://github.com/crypto-org-chain/ibc-proto-rust.git?branch=ethermint#94045600cb53700ee97e7974e9053a07a6fb70d3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
