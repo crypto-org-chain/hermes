@@ -42,9 +42,6 @@ tendermint-proto                 = { version = "0.40.0" }
 tendermint-rpc                   = { version = "0.40.0" }
 tendermint-testgen               = { version = "0.40.0" }
 
-# Namada dependencies
-namada_sdk              = "0.149.1"
-
 # Other dependencies
 abscissa_core            = "=0.6.0"
 anyhow                   = "1.0"

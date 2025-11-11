@@ -906,10 +906,7 @@ impl<DstChain: ChainHandle, SrcChain: ChainHandle> ForeignClient<DstChain, SrcCh
         })?;
 
         let refresh_rate = match src_config {
-            ChainConfig::CosmosSdk(config) | ChainConfig::Namada(config) => {
-                config.client_refresh_rate
-            }
-            ChainConfig::Penumbra(config) => config.client_refresh_rate,
+            ChainConfig::CosmosSdk(config) => config.client_refresh_rate,
         };
 
         let refresh_period = client_state
@@ -1761,10 +1758,7 @@ impl<DstChain: ChainHandle, SrcChain: ChainHandle> ForeignClient<DstChain, SrcCh
         })?;
 
         let is_ccv_consumer_chain = match chain_config {
-            ChainConfig::CosmosSdk(config) | ChainConfig::Namada(config) => {
-                config.ccv_consumer_chain
-            }
-            ChainConfig::Penumbra(_) => false,
+            ChainConfig::CosmosSdk(config) => config.ccv_consumer_chain,
         };
 
         let mut msgs = vec![];

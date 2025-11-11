@@ -35,7 +35,7 @@ use crate::types::wallet::{Wallet, WalletAddress};
    methods are used with the values associated to the correct chain.
 */
 pub trait TaggedChainDriverExt<Chain> {
-    fn chain_id(&self) -> TaggedChainIdRef<Chain>;
+    fn chain_id(&self) -> TaggedChainIdRef<'_, Chain>;
 
     fn tx_config(&self) -> MonoTagged<Chain, &TxConfig>;
 
@@ -112,7 +112,7 @@ pub trait TaggedChainDriverExt<Chain> {
 }
 
 impl<Chain: Send> TaggedChainDriverExt<Chain> for MonoTagged<Chain, &ChainDriver> {
-    fn chain_id(&self) -> TaggedChainIdRef<Chain> {
+    fn chain_id(&self) -> TaggedChainIdRef<'_, Chain> {
         self.map_ref(|val| &val.chain_id)
     }
 

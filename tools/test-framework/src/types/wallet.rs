@@ -3,7 +3,7 @@
 */
 
 use core::fmt::{self, Display};
-use ibc_relayer::keyring::{AnySigningKeyPair, NamadaKeyPair, Secp256k1KeyPair};
+use ibc_relayer::keyring::{AnySigningKeyPair, Secp256k1KeyPair};
 
 use crate::types::env::{prefix_writer, EnvWriter, ExportEnv};
 use crate::types::tagged::*;
@@ -112,14 +112,6 @@ impl Wallet {
             id: WalletId(id),
             address: WalletAddress(address),
             key: secp256_key.into(),
-        }
-    }
-
-    pub fn new_namada(id: String, address: String, namada_key: NamadaKeyPair) -> Self {
-        Self {
-            id: WalletId(id),
-            address: WalletAddress(address),
-            key: namada_key.into(),
         }
     }
 }

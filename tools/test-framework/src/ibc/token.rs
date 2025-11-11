@@ -15,7 +15,7 @@ pub type TaggedToken<Chain> = MonoTagged<Chain, Token>;
 pub type TaggedTokenRef<'a, Chain> = MonoTagged<Chain, &'a Token>;
 
 pub trait TaggedTokenExt<Chain> {
-    fn denom(&self) -> TaggedDenomRef<Chain>;
+    fn denom(&self) -> TaggedDenomRef<'_, Chain>;
 
     fn amount(&self) -> Amount;
 
@@ -34,7 +34,7 @@ pub trait TaggedDenomExt<Chain> {
 }
 
 impl<Chain> TaggedTokenExt<Chain> for TaggedToken<Chain> {
-    fn denom(&self) -> TaggedDenomRef<Chain> {
+    fn denom(&self) -> TaggedDenomRef<'_, Chain> {
         self.map_ref(|t| &t.denom)
     }
 
@@ -59,7 +59,7 @@ impl<Chain> TaggedTokenExt<Chain> for TaggedToken<Chain> {
 }
 
 impl<Chain> TaggedTokenExt<Chain> for TaggedTokenRef<'_, Chain> {
-    fn denom(&self) -> TaggedDenomRef<Chain> {
+    fn denom(&self) -> TaggedDenomRef<'_, Chain> {
         self.map_ref(|t| &t.denom)
     }
 

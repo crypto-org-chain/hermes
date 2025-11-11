@@ -22,8 +22,9 @@ use crate::timestamp::{ParseTimestampError, Timestamp};
 /// is legal and meaningful, even though the Tendermint spec rejects this height
 /// as invalid. Thus, it must be parsed specially, where this special case means
 /// "no timeout".
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Default)]
 pub enum TimeoutHeight {
+    #[default]
     Never,
     At(Height),
 }
@@ -65,12 +66,6 @@ impl TimeoutHeight {
             TimeoutHeight::At(height) => height.to_string(),
             TimeoutHeight::Never => "0-0".into(),
         }
-    }
-}
-
-impl Default for TimeoutHeight {
-    fn default() -> Self {
-        Self::Never
     }
 }
 

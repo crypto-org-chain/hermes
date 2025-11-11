@@ -92,11 +92,8 @@ impl TestOverrides for InterchainSecurityIcqTest {
 
         for chain in config.chains.iter_mut() {
             match chain {
-                ChainConfig::CosmosSdk(chain_config) | ChainConfig::Namada(chain_config) => {
+                ChainConfig::CosmosSdk(chain_config) => {
                     chain_config.allow_ccq = self.allow_ccq;
-                }
-                ChainConfig::Penumbra(_) => {
-                    panic!("running tests with Penumbra chain not supported")
                 }
             }
         }

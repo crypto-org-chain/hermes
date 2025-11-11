@@ -123,12 +123,6 @@ pub fn delete_key(config: &ChainConfig, key_name: &str) -> eyre::Result<()> {
             )?;
             keyring.remove_key(key_name)?;
         }
-        ChainConfig::Namada(config) => {
-            let mut keyring =
-                KeyRing::new_namada(Store::Test, &config.id, &config.key_store_folder)?;
-            keyring.remove_key(key_name)?;
-        }
-        ChainConfig::Penumbra(_) => unimplemented!("no key support for penumbra"),
     }
     Ok(())
 }
@@ -147,15 +141,6 @@ pub fn delete_all_keys(config: &ChainConfig) -> eyre::Result<()> {
                 keyring.remove_key(&key_name)?;
             }
         }
-        ChainConfig::Namada(config) => {
-            let mut keyring =
-                KeyRing::new_namada(Store::Test, &config.id, &config.key_store_folder)?;
-            let keys = keyring.keys()?;
-            for (key_name, _) in keys {
-                keyring.remove_key(&key_name)?;
-            }
-        }
-        ChainConfig::Penumbra(_) => unimplemented!("no key support for penumbra"),
     }
     Ok(())
 }

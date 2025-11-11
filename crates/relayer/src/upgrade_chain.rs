@@ -107,21 +107,7 @@ pub fn requires_legacy_upgrade_proposal(
         return Ok(true);
     };
 
-    let version_specs = match version_specs {
-        Specs::Cosmos(v) => v,
-        Specs::Penumbra(_) => {
-            return Err(UpgradeChainError::submit(
-                dst_chain.id(),
-                crate::chain::namada::error::Error::upgrade().into(),
-            ))
-        }
-        Specs::Namada(_) => {
-            return Err(UpgradeChainError::submit(
-                dst_chain.id(),
-                crate::chain::namada::error::Error::upgrade().into(),
-            ))
-        }
-    };
+    let Specs::Cosmos(version_specs) = version_specs;
 
     let sdk_before_50 = version_specs
         .cosmos_sdk
