@@ -924,7 +924,7 @@ impl ChainEndpoint for CosmosSdkChain {
         let compat_mode = rt.block_on(fetch_compat_mode(&rpc_client, &config))?;
         rpc_client.set_compat_mode(compat_mode);
 
-        let node_info = rt.block_on(fetch_node_info(&rpc_client, &config))?;
+        let node_info = rt.block_on(fetch_node_info(&config))?;
         let light_client = TmLightClient::from_cosmos_sdk_config(&config, node_info.id)?;
 
         // Initialize key store and load key
@@ -2683,20 +2683,64 @@ fn sort_events_by_sequence(events: &mut [IbcEventWithHeight]) {
     });
 }
 
-async fn fetch_node_info(
-    rpc_client: &HttpClient,
-    config: &config::CosmosSdkConfig,
-) -> Result<node::Info, Error> {
+/// Fetches node info from /status endpoint, skipping validator_info deserialization
+async fn fetch_node_info(config: &config::CosmosSdkConfig) -> Result<node::Info, Error> {
+    use serde::Deserialize;
+
     crate::time!("fetch_node_info",
     {
         "src_chain": config.id.to_string(),
     });
 
-    rpc_client
-        .status()
-        .await
-        .map(|s| s.node_info)
-        .map_err(|e| Error::rpc(config.rpc_addr.clone(), e))
+    // Make a raw HTTP request to /status and parse only the fields we need
+    // This avoids deserializing validator_info which may contain invalid secp256k1 keys
+    // on non-validator RPC nodes
+    let url = format!("{}/status", config.rpc_addr);
+    let response = reqwest::get(&url).await.map_err(|e| {
+        Error::rpc(
+            config.rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(e.to_string()),
+        )
+    })?;
+
+    if !response.status().is_success() {
+        return Err(Error::rpc(
+            config.rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(format!("HTTP error: {}", response.status())),
+        ));
+    }
+
+    // Define a partial response structure that only includes node_info
+    // By not including validator_info in the struct, serde will skip parsing it
+    #[derive(Deserialize)]
+    struct PartialStatusResponse {
+        result: PartialResult,
+    }
+
+    #[derive(Deserialize)]
+    struct PartialResult {
+        node_info: tendermint::node::Info,
+        // validator_info is intentionally omitted to skip its deserialization
+    }
+
+    let text = response.text().await.map_err(|e| {
+        Error::rpc(
+            config.rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(e.to_string()),
+        )
+    })?;
+
+    let partial: PartialStatusResponse = serde_json::from_str(&text).map_err(|e| {
+        Error::rpc(
+            config.rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(format!(
+                "Failed to parse status response: {}",
+                e
+            )),
+        )
+    })?;
+
+    Ok(partial.result.node_info)
 }
 
 /// Returns the suffix counter for a CosmosSDK client id.
