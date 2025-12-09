@@ -2700,10 +2700,6 @@ pub struct PartialSyncInfo {
     pub latest_app_hash: String,
     pub latest_block_height: tendermint::block::Height,
     pub latest_block_time: tendermint::Time,
-    pub earliest_block_hash: String,
-    pub earliest_app_hash: String,
-    pub earliest_block_height: tendermint::block::Height,
-    pub earliest_block_time: tendermint::Time,
     pub catching_up: bool,
 }
 
