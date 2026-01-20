@@ -344,8 +344,7 @@ fn submit_duplicate_vote_evidence(
     // Retrieve the consensus state at the highest height smaller than the infraction height.
     let consensus_state_height_before_infraction_height = consensus_state_heights
         .into_iter()
-        .filter(|height| height.revision_height() < infraction_height.value())
-        .next_back();
+        .rfind(|height| height.revision_height() < infraction_height.value());
 
     let Some(trusted_height) = consensus_state_height_before_infraction_height else {
         error!(

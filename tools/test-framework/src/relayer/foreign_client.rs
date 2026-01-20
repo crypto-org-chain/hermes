@@ -27,7 +27,7 @@ pub trait TaggedForeignClientExt<DstChain: ChainHandle, SrcChain: ChainHandle> {
        Get the client ID of the destination chain that corresponds
        to the source chain.
     */
-    fn tagged_client_id(&self) -> TaggedClientIdRef<DstChain, SrcChain>;
+    fn tagged_client_id(&self) -> TaggedClientIdRef<'_, DstChain, SrcChain>;
 }
 
 impl<DstChain: ChainHandle, SrcChain: ChainHandle> TaggedForeignClientExt<DstChain, SrcChain>
@@ -41,7 +41,7 @@ impl<DstChain: ChainHandle, SrcChain: ChainHandle> TaggedForeignClientExt<DstCha
         MonoTagged::new(self.dst_chain().id())
     }
 
-    fn tagged_client_id(&self) -> TaggedClientIdRef<DstChain, SrcChain> {
+    fn tagged_client_id(&self) -> TaggedClientIdRef<'_, DstChain, SrcChain> {
         DualTagged::new(self.id())
     }
 }

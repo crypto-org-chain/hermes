@@ -71,11 +71,8 @@ impl TestOverrides for IcaFilterTestAllow {
 
         for chain in &mut config.chains {
             match chain {
-                ChainConfig::CosmosSdk(chain_config) | ChainConfig::Namada(chain_config) => {
+                ChainConfig::CosmosSdk(chain_config) => {
                     chain_config.packet_filter = self.packet_filter.clone();
-                }
-                ChainConfig::Penumbra(_) => {
-                    panic!("running tests with Penumbra chain not supported")
                 }
             }
         }
@@ -191,15 +188,12 @@ impl TestOverrides for IcaFilterTestDeny {
 
         for chain in &mut config.chains {
             match chain {
-                ChainConfig::CosmosSdk(chain_config) | ChainConfig::Namada(chain_config) => {
+                ChainConfig::CosmosSdk(chain_config) => {
                     chain_config.packet_filter.channel_policy =
                         ChannelPolicy::Deny(ChannelFilters::new(vec![(
                             FilterPattern::Wildcard("ica*".parse().unwrap()),
                             FilterPattern::Wildcard("*".parse().unwrap()),
                         )]));
-                }
-                ChainConfig::Penumbra(_) => {
-                    panic!("running tests with Penumbra chain not supported")
                 }
             }
         }

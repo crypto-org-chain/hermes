@@ -83,22 +83,22 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> ConnectedChains<ChainA, ChainB> {
     /**
        The chain ID of chain A.
     */
-    pub fn chain_id_a(&self) -> TaggedChainIdRef<ChainA> {
+    pub fn chain_id_a(&self) -> TaggedChainIdRef<'_, ChainA> {
         self.node_a.chain_id()
     }
 
-    pub fn client_id_a(&self) -> TaggedClientIdRef<ChainA, ChainB> {
+    pub fn client_id_a(&self) -> TaggedClientIdRef<'_, ChainA, ChainB> {
         self.foreign_clients.client_id_a()
     }
 
-    pub fn client_id_b(&self) -> TaggedClientIdRef<ChainB, ChainA> {
+    pub fn client_id_b(&self) -> TaggedClientIdRef<'_, ChainB, ChainA> {
         self.foreign_clients.client_id_b()
     }
 
     /**
        The chain ID of chain B.
     */
-    pub fn chain_id_b(&self) -> TaggedChainIdRef<ChainB> {
+    pub fn chain_id_b(&self) -> TaggedChainIdRef<'_, ChainB> {
         self.node_b.chain_id()
     }
 

@@ -20,11 +20,11 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> ForeignClientPair<ChainA, ChainB>
         }
     }
 
-    pub fn client_id_a(&self) -> TaggedClientIdRef<ChainA, ChainB> {
+    pub fn client_id_a(&self) -> TaggedClientIdRef<'_, ChainA, ChainB> {
         self.client_b_to_a.tagged_client_id()
     }
 
-    pub fn client_id_b(&self) -> TaggedClientIdRef<ChainB, ChainA> {
+    pub fn client_id_b(&self) -> TaggedClientIdRef<'_, ChainB, ChainA> {
         self.client_a_to_b.tagged_client_id()
     }
 

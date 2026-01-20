@@ -65,7 +65,6 @@ use tendermint::time::Time as TmTime;
 use tendermint_light_client::verifier::types::LightBlock as TmLightBlock;
 use tendermint_rpc::client::CompatMode;
 use tendermint_rpc::endpoint::broadcast::tx_sync::Response;
-use tendermint_rpc::endpoint::status;
 use tendermint_rpc::{Client, HttpClient, Order};
 
 use crate::account::Balance;
@@ -612,7 +611,7 @@ impl CosmosSdkChain {
     ///
     /// Returns an error if the node is still syncing and has not caught up,
     /// ie. if `sync_info.catching_up` is `true`.
-    fn chain_rpc_status(&self) -> Result<status::Response, Error> {
+    fn chain_rpc_status(&self) -> Result<PartialChainStatus, Error> {
         crate::time!(
             "chain_rpc_status",
             {
@@ -621,24 +620,25 @@ impl CosmosSdkChain {
         );
         crate::telemetry!(query, self.id(), "rpc_status");
 
-        let status = self
-            .block_on(self.rpc_client.status())
-            .map_err(|e| Error::rpc(self.config.rpc_addr.clone(), e))?;
+        let partial = self.block_on(fetch_status_with_partial_parsing(&self.config.rpc_addr))?;
 
-        if status.sync_info.catching_up {
-            Err(Error::chain_not_caught_up(
+        if partial.result.sync_info.catching_up {
+            return Err(Error::chain_not_caught_up(
                 self.config.rpc_addr.to_string(),
                 self.config().id.clone(),
-            ))
-        } else {
-            Ok(status)
+            ));
         }
+
+        Ok(PartialChainStatus {
+            node_info: partial.result.node_info,
+            sync_info: partial.result.sync_info,
+        })
     }
 
     /// Query the chain status of the RPC and gRPC nodes.
     ///
     /// Returns an error if any of the node is still syncing and has not caught up.
-    fn chain_status(&self) -> Result<status::Response, Error> {
+    fn chain_status(&self) -> Result<PartialChainStatus, Error> {
         crate::time!(
             "chain_status",
             {
@@ -669,11 +669,9 @@ impl CosmosSdkChain {
         );
         crate::telemetry!(query, self.id(), "query_latest_height");
 
-        let status = self.rt.block_on(query_status(
-            self.id(),
-            &self.rpc_client,
-            &self.config.rpc_addr,
-        ))?;
+        let status = self
+            .rt
+            .block_on(query_status(self.id(), &self.config.rpc_addr))?;
 
         Ok(status.height)
     }
@@ -924,7 +922,7 @@ impl ChainEndpoint for CosmosSdkChain {
         let compat_mode = rt.block_on(fetch_compat_mode(&rpc_client, &config))?;
         rpc_client.set_compat_mode(compat_mode);
 
-        let node_info = rt.block_on(fetch_node_info(&rpc_client, &config))?;
+        let node_info = rt.block_on(fetch_node_info(&config))?;
         let light_client = TmLightClient::from_cosmos_sdk_config(&config, node_info.id)?;
 
         // Initialize key store and load key
@@ -2683,20 +2681,88 @@ fn sort_events_by_sequence(events: &mut [IbcEventWithHeight]) {
     });
 }
 
-async fn fetch_node_info(
-    rpc_client: &HttpClient,
-    config: &config::CosmosSdkConfig,
-) -> Result<node::Info, Error> {
+// Partial status response structures that skip validator_info deserialization
+#[derive(serde::Deserialize)]
+pub struct PartialStatusResponse {
+    pub result: PartialStatusResult,
+}
+
+#[derive(serde::Deserialize)]
+pub struct PartialStatusResult {
+    pub node_info: tendermint::node::Info,
+    pub sync_info: PartialSyncInfo,
+    // validator_info is intentionally omitted to skip its deserialization
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct PartialSyncInfo {
+    pub latest_block_hash: String,
+    pub latest_app_hash: String,
+    pub latest_block_height: tendermint::block::Height,
+    pub latest_block_time: tendermint::Time,
+    pub catching_up: bool,
+}
+
+/// Partial status response without validator_info
+/// This is used internally to avoid parsing invalid validator_info from non-validator nodes
+#[derive(Clone, Debug)]
+pub struct PartialChainStatus {
+    pub node_info: tendermint::node::Info,
+    pub sync_info: PartialSyncInfo,
+}
+
+/// Fetches status from /status endpoint, skipping validator_info deserialization
+/// This is needed because non-validator RPC nodes may return invalid secp256k1 keys
+pub async fn fetch_status_with_partial_parsing(
+    rpc_addr: &tendermint_rpc::Url,
+) -> Result<PartialStatusResponse, Error> {
+    // Make a raw HTTP request to /status and parse only the fields we need
+    // This avoids deserializing validator_info which may contain invalid secp256k1 keys
+    // on non-validator RPC nodes
+    let url = format!("{}/status", rpc_addr);
+    let response = reqwest::get(&url).await.map_err(|e| {
+        Error::rpc(
+            rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(e.to_string()),
+        )
+    })?;
+
+    if !response.status().is_success() {
+        return Err(Error::rpc(
+            rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(format!("HTTP error: {}", response.status())),
+        ));
+    }
+
+    let text = response.text().await.map_err(|e| {
+        Error::rpc(
+            rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(e.to_string()),
+        )
+    })?;
+
+    let partial: PartialStatusResponse = serde_json::from_str(&text).map_err(|e| {
+        Error::rpc(
+            rpc_addr.clone(),
+            tendermint_rpc::Error::client_internal(format!(
+                "Failed to parse status response: {}",
+                e
+            )),
+        )
+    })?;
+
+    Ok(partial)
+}
+
+/// Fetches node info from /status endpoint, skipping validator_info deserialization
+async fn fetch_node_info(config: &config::CosmosSdkConfig) -> Result<node::Info, Error> {
     crate::time!("fetch_node_info",
     {
         "src_chain": config.id.to_string(),
     });
 
-    rpc_client
-        .status()
-        .await
-        .map(|s| s.node_info)
-        .map_err(|e| Error::rpc(config.rpc_addr.clone(), e))
+    let partial = fetch_status_with_partial_parsing(&config.rpc_addr).await?;
+    Ok(partial.result.node_info)
 }
 
 /// Returns the suffix counter for a CosmosSDK client id.
@@ -2840,17 +2906,14 @@ pub async fn fetch_compat_mode(
                 config.id
             );
 
-            let status = client
-                .status()
-                .await
-                .map_err(|e| Error::rpc(config.rpc_addr.clone(), e))?;
+            let partial = fetch_status_with_partial_parsing(&config.rpc_addr).await?;
 
             warn!(
                 "Will fall back on using the node version: {}",
-                status.node_info.version
+                partial.result.node_info.version
             );
 
-            compat_mode_from_node_version(&config.compat_mode, status.node_info.version)
+            compat_mode_from_node_version(&config.compat_mode, partial.result.node_info.version)
         }
     }?;
 

@@ -52,8 +52,6 @@ impl TestOverrides for DynamicGasTest {
                     GasPrice::new(0.1, chain_config_a.gas_price.denom.clone());
                 chain_config_a.dynamic_gas_price = DynamicGasPrice::unsafe_new(false, 1.1, 0.6);
             }
-            ChainConfig::Namada(_) => {}
-            ChainConfig::Penumbra(_) => panic!("running tests with Penumbra chain not supported"),
         }
 
         match &mut config.chains[1] {
@@ -63,8 +61,6 @@ impl TestOverrides for DynamicGasTest {
                 chain_config_b.dynamic_gas_price =
                     DynamicGasPrice::unsafe_new(self.dynamic_gas_enabled, 1.1, 0.6);
             }
-            ChainConfig::Namada(_) => {}
-            ChainConfig::Penumbra(_) => panic!("running tests with Penumbra chain not supported"),
         }
     }
 
@@ -100,10 +96,7 @@ impl BinaryChannelTest for DynamicGasTest {
             .first()
             .ok_or_else(|| eyre!("chain configuration is empty"))?
         {
-            ChainConfig::CosmosSdk(chain_config) | ChainConfig::Namada(chain_config) => {
-                chain_config.gas_price.denom.clone()
-            }
-            ChainConfig::Penumbra(_) => panic!("running tests with Penumbra chain not supported"),
+            ChainConfig::CosmosSdk(chain_config) => chain_config.gas_price.denom.clone(),
         };
 
         let gas_denom_str_b: String = match relayer
@@ -112,10 +105,7 @@ impl BinaryChannelTest for DynamicGasTest {
             .get(1)
             .ok_or_else(|| eyre!("chain configuration is empty"))?
         {
-            ChainConfig::CosmosSdk(chain_config) | ChainConfig::Namada(chain_config) => {
-                chain_config.gas_price.denom.clone()
-            }
-            ChainConfig::Penumbra(_) => panic!("running tests with Penumbra chain not supported"),
+            ChainConfig::CosmosSdk(chain_config) => chain_config.gas_price.denom.clone(),
         };
 
         let gas_denom_a: MonoTagged<ChainA, Denom> =

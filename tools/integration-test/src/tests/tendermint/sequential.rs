@@ -3,7 +3,6 @@ use std::time::Instant;
 use ibc_relayer::chain::tracking::TrackedMsgs;
 use ibc_relayer::config::types::max_msg_num::MaxMsgNum;
 use ibc_relayer::config::ChainConfig;
-use ibc_test_framework::chain::chain_type::ChainType;
 use ibc_test_framework::chain::config;
 use ibc_test_framework::prelude::*;
 use ibc_test_framework::relayer::transfer::build_transfer_message;
@@ -44,19 +43,17 @@ impl TestOverrides for SequentialCommitTest {
     fn modify_relayer_config(&self, config: &mut Config) {
         // Use sequential batching for chain A, and default parallel batching for chain B
         match &mut config.chains[0] {
-            ChainConfig::CosmosSdk(chain_config_a) | ChainConfig::Namada(chain_config_a) => {
+            ChainConfig::CosmosSdk(chain_config_a) => {
                 chain_config_a.max_msg_num = MaxMsgNum::new(MESSAGES_PER_BATCH).unwrap();
                 chain_config_a.sequential_batch_tx = true;
             }
-            ChainConfig::Penumbra(_) => { /* no-op */ }
         };
 
         match &mut config.chains[1] {
-            ChainConfig::CosmosSdk(chain_config_b) | ChainConfig::Namada(chain_config_b) => {
+            ChainConfig::CosmosSdk(chain_config_b) => {
                 chain_config_b.max_msg_num = MaxMsgNum::new(MESSAGES_PER_BATCH).unwrap();
                 chain_config_b.sequential_batch_tx = false;
             }
-            ChainConfig::Penumbra(_) => { /* no-op */ }
         };
     }
 
@@ -109,26 +106,11 @@ impl BinaryChannelTest for SequentialCommitTest {
                 TOTAL_MESSAGES, duration
             );
 
-            let (min_duration, max_duration) = match chains.node_a.chain_driver().value().chain_type
-            {
-                ChainType::Namada => (
-                    Duration::from_millis((BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64) - 1000),
-                    Duration::from_millis(
-                        (BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64 * 2) + 1000,
-                    ),
-                ),
-                _ => {
-                    // Time taken for submitting sequential batches should be around number of transactions * block time
-                    (
-                        Duration::from_millis(
-                            (BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64) - 1000,
-                        ),
-                        Duration::from_millis(
-                            (BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64) + 1000,
-                        ),
-                    )
-                }
-            };
+            // Time taken for submitting sequential batches should be around number of transactions * block time
+            let (min_duration, max_duration) = (
+                Duration::from_millis((BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64) - 1000),
+                Duration::from_millis((BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64) + 1000),
+            );
             assert!(duration > min_duration);
             assert!(duration < max_duration);
         }
@@ -169,13 +151,7 @@ impl BinaryChannelTest for SequentialCommitTest {
                 TOTAL_MESSAGES, duration
             );
 
-            let max_duration = match chains.node_b.chain_driver().value().chain_type {
-                ChainType::Namada => {
-                    // Shorter than the sequential batches
-                    Duration::from_millis(BLOCK_TIME_MILLIS * TOTAL_TRANSACTIONS as u64 * 2)
-                }
-                _ => Duration::from_millis(BLOCK_TIME_MILLIS * 2),
-            };
+            let max_duration = Duration::from_millis(BLOCK_TIME_MILLIS * 2);
             assert!(duration < max_duration);
         }
 

@@ -57,15 +57,12 @@ pub type TaggedDenomRef<'a, Chain> = MonoTagged<Chain, &'a Denom>;
    Returns the derived denomination on `ChainB`.
 */
 pub fn derive_ibc_denom<ChainA, ChainB>(
-    chain_type: &ChainType,
+    _chain_type: &ChainType,
     port_id: &TaggedPortIdRef<ChainB, ChainA>,
     channel_id: &TaggedChannelIdRef<ChainB, ChainA>,
     denom: &TaggedDenomRef<ChainA>,
 ) -> Result<TaggedDenom<ChainB>, Error> {
-    match chain_type {
-        ChainType::Namada => derive_namada_ibc_denom(port_id, channel_id, denom),
-        _ => derive_cosmos_ibc_denom(port_id, channel_id, denom),
-    }
+    derive_cosmos_ibc_denom(port_id, channel_id, denom)
 }
 
 fn derive_cosmos_ibc_denom<ChainA, ChainB>(
@@ -122,47 +119,6 @@ fn derive_cosmos_ibc_denom<ChainA, ChainB>(
                 path: new_path,
                 denom: denom.clone(),
                 hashed,
-                token_denom: *token_denom,
-            }))
-        }
-    }
-}
-
-fn derive_namada_ibc_denom<ChainA, ChainB>(
-    port_id: &TaggedPortIdRef<ChainB, ChainA>,
-    channel_id: &TaggedChannelIdRef<ChainB, ChainA>,
-    denom: &TaggedDenomRef<ChainA>,
-) -> Result<TaggedDenom<ChainB>, Error> {
-    match denom.value() {
-        Denom::Base {
-            raw_address,
-            token_denom,
-            ..
-        } => {
-            let path = format!("{port_id}/{channel_id}");
-            let ibc_token_addr = namada_sdk::ibc::trace::ibc_token(format!("{path}/{raw_address}"));
-
-            Ok(MonoTagged::new(Denom::Ibc {
-                path,
-                denom: Box::new((*denom.value()).clone()),
-                hashed: ibc_token_addr.to_string(),
-                token_denom: *token_denom,
-            }))
-        }
-        Denom::Ibc {
-            path,
-            denom,
-            token_denom,
-            ..
-        } => {
-            let new_path = format!("{port_id}/{channel_id}/{path}");
-            let ibc_token_addr =
-                namada_sdk::ibc::trace::ibc_token(format!("{new_path}/{}", denom.hash_only()));
-
-            Ok(MonoTagged::new(Denom::Ibc {
-                path: new_path,
-                denom: denom.clone(),
-                hashed: ibc_token_addr.to_string(),
                 token_denom: *token_denom,
             }))
         }
