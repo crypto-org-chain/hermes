@@ -44,7 +44,7 @@ mod retry_strategy {
     const INITIAL_DELAY: Duration = Duration::from_secs(1); // 1 second
 
     pub fn default() -> impl Iterator<Item = Duration> {
-        Fibonacci::from(INITIAL_DELAY).map(move |delay| delay.min(MAX_DELAY))
+        Fibonacci::from(INITIAL_DELAY).map(|delay| delay.min(MAX_DELAY))
     }
 }
 
