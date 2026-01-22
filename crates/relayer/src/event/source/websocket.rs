@@ -36,17 +36,15 @@ use super::{EventBatch, EventSourceCmd, Result, SubscriptionStream, TxEventSourc
 use self::extract::extract_events;
 
 mod retry_strategy {
-    use crate::util::retry::clamp_total;
     use core::time::Duration;
     use retry::delay::Fibonacci;
 
     // Default parameters for the retrying mechanism
     const MAX_DELAY: Duration = Duration::from_secs(60); // 1 minute
-    const MAX_TOTAL_DELAY: Duration = Duration::from_secs(10 * 60); // 10 minutes
     const INITIAL_DELAY: Duration = Duration::from_secs(1); // 1 second
 
     pub fn default() -> impl Iterator<Item = Duration> {
-        clamp_total(Fibonacci::from(INITIAL_DELAY), MAX_DELAY, MAX_TOTAL_DELAY)
+        Fibonacci::from(INITIAL_DELAY).map(move |delay| delay.min(MAX_DELAY))
     }
 }
 
