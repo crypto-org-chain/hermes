@@ -34,12 +34,9 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build API documentation
-        uses: actions-rs/cargo@v1
         env:
           RUSTDOCFLAGS: "--cfg docsrs"
-        with:
-          command: doc
-          args: --all-features
+        run: cargo doc --all-features
 
       - name: Push API documentation to GitHub Pages
         if: github.ref == 'refs/heads/master'
