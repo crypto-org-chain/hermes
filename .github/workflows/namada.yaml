@@ -72,10 +72,8 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p ibc-integration-test --features namada --no-fail-fast --no-run
+      - name: Build integration tests
+        run: cargo test -p ibc-integration-test --features namada --no-fail-fast --no-run
       - name: Install cargo-nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
       - name: Download CometBFT
@@ -157,10 +155,8 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p ibc-integration-test --features namada --no-fail-fast --no-run
+      - name: Build integration tests
+        run: cargo test -p ibc-integration-test --features namada --no-fail-fast --no-run
       - name: Install cargo-nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
       - name: Download CometBFT
