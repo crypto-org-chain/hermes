@@ -73,7 +73,22 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build integration tests
-        run: cargo test -p ibc-integration-test --features namada --no-fail-fast --no-run
+        run: |
+          HAS_NAMADA=$(
+            cargo metadata --manifest-path tools/integration-test/Cargo.toml --format-version 1 --no-deps \
+            | python - <<'PY'
+import json, sys
+data = json.load(sys.stdin)
+print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))
+PY
+          )
+          if [ "$HAS_NAMADA" = "True" ]; then
+            echo "Building ibc-integration-test with the namada feature enabled"
+            cargo test --manifest-path tools/integration-test/Cargo.toml --features namada --no-fail-fast --no-run
+          else
+            echo "The namada feature is not defined for ibc-integration-test; building without it"
+            cargo test --manifest-path tools/integration-test/Cargo.toml --no-fail-fast --no-run
+          fi
       - name: Install cargo-nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
       - name: Download CometBFT
@@ -156,7 +171,22 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build integration tests
-        run: cargo test -p ibc-integration-test --features namada --no-fail-fast --no-run
+        run: |
+          HAS_NAMADA=$(
+            cargo metadata --manifest-path tools/integration-test/Cargo.toml --format-version 1 --no-deps \
+            | python - <<'PY'
+import json, sys
+data = json.load(sys.stdin)
+print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))
+PY
+          )
+          if [ "$HAS_NAMADA" = "True" ]; then
+            echo "Building ibc-integration-test with the namada feature enabled"
+            cargo test --manifest-path tools/integration-test/Cargo.toml --features namada --no-fail-fast --no-run
+          else
+            echo "The namada feature is not defined for ibc-integration-test; building without it"
+            cargo test --manifest-path tools/integration-test/Cargo.toml --no-fail-fast --no-run
+          fi
       - name: Install cargo-nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
       - name: Download CometBFT
@@ -200,4 +230,3 @@ jobs:
         run: |
           taskset -c 0,1 cargo nextest run -p ibc-integration-test --no-fail-fast --failure-output final --test-threads=1 \
             --features namada
-
