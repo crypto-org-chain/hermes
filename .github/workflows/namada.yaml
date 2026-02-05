@@ -76,11 +76,7 @@ jobs:
         run: |
           HAS_NAMADA=$(
             cargo metadata --manifest-path tools/integration-test/Cargo.toml --format-version 1 --no-deps \
-            | python - <<'PY'
-import json, sys
-data = json.load(sys.stdin)
-print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))
-PY
+            | python -c 'import json,sys; data=json.load(sys.stdin); print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))'
           )
           if [ "$HAS_NAMADA" = "True" ]; then
             echo "Building ibc-integration-test with the namada feature enabled"
@@ -174,11 +170,7 @@ PY
         run: |
           HAS_NAMADA=$(
             cargo metadata --manifest-path tools/integration-test/Cargo.toml --format-version 1 --no-deps \
-            | python - <<'PY'
-import json, sys
-data = json.load(sys.stdin)
-print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))
-PY
+            | python -c 'import json,sys; data=json.load(sys.stdin); print(any(pkg["name"] == "ibc-integration-test" and "namada" in pkg.get("features", {}) for pkg in data["packages"]))'
           )
           if [ "$HAS_NAMADA" = "True" ]; then
             echo "Building ibc-integration-test with the namada feature enabled"
