@@ -298,20 +298,8 @@ impl SigningKeyPair for Secp256k1KeyPair {
     // - informalsystems/hermes#2863.
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>, Error> {
         let hashed_message: GenericArray<u8, U32> = match self.address_type {
-            Secp256k1AddressType::Ethermint => {
-                let mut array = GenericArray::<u8, U32>::default();
-                array
-                    .as_mut_slice()
-                    .clone_from_slice(&keccak256_hash(message));
-                array
-            }
-            Secp256k1AddressType::Cosmos => {
-                let mut array = GenericArray::<u8, U32>::default();
-                array
-                    .as_mut_slice()
-                    .copy_from_slice(Sha256::digest(message).as_ref());
-                array
-            }
+            Secp256k1AddressType::Ethermint => keccak256_hash(message).into(),
+            Secp256k1AddressType::Cosmos => <[u8; 32]>::from(Sha256::digest(message)).into(),
         };
 
         assert!(hashed_message.len() == 32);
