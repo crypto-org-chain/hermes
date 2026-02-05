@@ -35,8 +35,5 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check templates
         run: bash scripts/auto_gen_templates.sh --mode "check"
-      - uses: actions-rs/cargo@v1
-        name: Check guide
-        with:
-          command: run
-          args: --manifest-path tools/check-guide/Cargo.toml
+      - name: Check guide
+        run: cargo run --manifest-path tools/check-guide/Cargo.toml

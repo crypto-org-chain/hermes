@@ -83,9 +83,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Hermes
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
       - name: Run test
         working-directory: ci/misbehaviour
         run: |
@@ -137,9 +135,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Hermes
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
       - name: Run test
         working-directory: ci/misbehaviour-ics
         run: |
@@ -191,9 +187,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Hermes
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
       - name: Run test
         working-directory: ci/misbehaviour-ics
         run: |
@@ -245,9 +239,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Hermes
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
       - name: Run test
         working-directory: ci/misbehaviour-ics
         run: |
