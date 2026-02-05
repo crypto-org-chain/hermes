@@ -6,7 +6,6 @@ use bitcoin::{
     network::Network,
 };
 use digest::Digest;
-#[allow(deprecated)]
 use generic_array::{typenum::U32, GenericArray};
 use hdpath::StandardHDPath;
 use ripemd::Ripemd160;
@@ -298,10 +297,21 @@ impl SigningKeyPair for Secp256k1KeyPair {
     // - https://github.com/evmos/ethermint/blob/main/crypto/ethsecp256k1/ethsecp256k1.go
     // - informalsystems/hermes#2863.
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>, Error> {
-        #[allow(deprecated)]
         let hashed_message: GenericArray<u8, U32> = match self.address_type {
-            Secp256k1AddressType::Ethermint => keccak256_hash(message).into(),
-            Secp256k1AddressType::Cosmos => Sha256::digest(message),
+            Secp256k1AddressType::Ethermint => {
+                let mut array = GenericArray::<u8, U32>::default();
+                array
+                    .as_mut_slice()
+                    .clone_from_slice(&keccak256_hash(message));
+                array
+            }
+            Secp256k1AddressType::Cosmos => {
+                let mut array = GenericArray::<u8, U32>::default();
+                array
+                    .as_mut_slice()
+                    .copy_from_slice(Sha256::digest(message).as_ref());
+                array
+            }
         };
 
         assert!(hashed_message.len() == 32);
