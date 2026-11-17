@@ -20,19 +20,13 @@ This section describes how to deploy this guide locally on your system.
 
 ### Pre-requisites
 
-Install `mdBook` using [`cargo`](https://doc.rust-lang.org/cargo/):
+The guide needs mdBook 0.4 and plug-ins built for it: `mdbook-template`, [`mdbook-mermaid`](https://mermaid-js.github.io/mermaid/#/) for diagrams, and `mdbook-toc` for tables of contents. The versions CI uses are pinned in [`.github/workflows/guide.yml`](../.github/workflows/guide.yml). Install them using [`cargo`](https://doc.rust-lang.org/cargo/):
 
 ```bash
-cargo install mdbook
+cargo install --locked mdbook@0.4.52 mdbook-mermaid@0.16.2 mdbook-toc@0.14.2
 ```
 
-You also need to install the mdbook plug-in for [`mermaid`](https://mermaid-js.github.io/mermaid/#/) to generate graphs and diagrams, and the `mdbook-toc` plug-in for generating table of contents:
-
-```bash
-cargo install mdbook-template
-cargo install mdbook-mermaid
-cargo install mdbook-toc
-```
+`mdbook-template` 1.1.0 no longer compiles with `--locked` on current Rust, so take its binary from the [v1.1.0 release](https://github.com/sgoudham/mdbook-template/releases/tag/v1.1.0) or install it without `--locked`.
 
 ### Building and viewing the guide locally
 
