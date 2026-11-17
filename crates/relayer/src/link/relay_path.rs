@@ -1679,12 +1679,13 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
         // to source operational data.
         let mut all_dst_odata = self.dst_operational_data.clone_vec();
 
-        let mut timed_out: Vec<Option<OperationalData>> = vec![None; all_dst_odata.len()];
+        let mut timed_out: Vec<OperationalData> = Vec::new();
 
         // For each operational data targeting the destination chain...
-        for (odata_pos, odata) in all_dst_odata.iter_mut().enumerate() {
+        for odata in all_dst_odata.iter_mut() {
             // ... check each `SendPacket` event, whether it should generate a timeout message
             let mut retain_batch = Vec::with_capacity(odata.batch.len());
+            let mut timed_out_batch: Option<OperationalData> = None;
             let odata_info = odata.info();
             let odata_tracking_id = odata.tracking_id;
 
@@ -1702,7 +1703,7 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
                                 odata_info,
                             );
 
-                            timed_out[odata_pos]
+                            timed_out_batch
                                 .get_or_insert_with(|| {
                                     OperationalData::new(
                                         dst_current_height,
@@ -1733,6 +1734,7 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
 
             // Update the whole batch, keeping only the relevant ones
             odata.batch = retain_batch;
+            timed_out.extend(timed_out_batch);
         }
 
         // Possibly some op. data became empty (if no events were kept).
@@ -1743,13 +1745,13 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
         self.dst_operational_data.replace(all_dst_odata);
 
         // Handle timed-out events
-        if timed_out.iter().all(|entry| entry.is_none()) {
+        if timed_out.is_empty() {
             // Nothing timed out in the meantime
             return Ok(());
         }
 
         // Schedule new operational data targeting the source chain
-        for new_od in timed_out.into_iter().flatten() {
+        for new_od in timed_out {
             info!(
                 "re-scheduling from new timed-out batch of size {}",
                 new_od.batch.len()
