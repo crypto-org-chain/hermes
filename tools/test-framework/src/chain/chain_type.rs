@@ -1,4 +1,5 @@
 use core::str::FromStr;
+use ibc_relayer::config::types::MaxMsgNum;
 use ibc_relayer::config::AddressType;
 use ibc_relayer_types::core::ics24_host::identifier::ChainId;
 
@@ -101,6 +102,17 @@ impl ChainType {
     pub fn enable_dynamic_fee(&self) -> bool {
         matches!(self, Self::Cosmos { dynamic_fee } if *dynamic_fee)
     }
+
+    pub fn max_msg_num(&self) -> MaxMsgNum {
+        match self {
+            Self::Cosmos { dynamic_fee: _ } | Self::Osmosis | Self::Evmos | Self::Provenance => {
+                MaxMsgNum::default()
+            }
+            // A 30-message recv-packet tx on injectived v1.13 simulates to ~3.1M gas,
+            // over the 3M max_gas of the test relayer config.
+            Self::Injective => MaxMsgNum::new(20).expect("20 is within MaxMsgNum bounds"),
+        }
+    }
 }
 
 impl FromStr for ChainType {
@@ -142,5 +154,24 @@ mod tests {
         let evmos_args = ChainType::from_str("evmosd").unwrap().extra_start_args();
         assert_eq!(evmos_args.len(), 2);
         assert_eq!(evmos_args[0], "--json-rpc.address");
+    }
+
+    #[test]
+    fn max_msg_num() {
+        let test_cases = [
+            ("gaiad", 30),
+            ("simd", 30),
+            ("evmosd", 30),
+            ("injectived", 20),
+        ];
+
+        for (command, expected) in test_cases {
+            let max_msg_num = ChainType::from_str(command).unwrap().max_msg_num();
+            assert_eq!(
+                max_msg_num.to_usize(),
+                expected,
+                "unexpected max_msg_num for {command}"
+            );
+        }
     }
 }
