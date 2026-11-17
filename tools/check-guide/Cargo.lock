@@ -5777,8 +5777,3 @@ dependencies = [
  "quote",
  "syn 2.0.101",
 ]
-
-[[patch.unused]]
-name = "tendermint-testgen"
-version = "0.40.4"
-source = "git+https://github.com/JayT106/tendermint-rs.git?rev=abbf51ca#abbf51cafb3b8e8fe0c0433685f0b7a8b5588765"

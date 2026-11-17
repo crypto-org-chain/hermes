@@ -125,6 +125,7 @@ overflow-checks = true
 
 [patch.crates-io]
 # ML-DSA-65 validator keys: cometbft/tendermint-rs#1533 backported onto v0.40.4.
+# Keep in sync with tools/check-guide/Cargo.toml, a separate workspace this patch does not reach.
 tendermint                       = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
 tendermint-rpc                   = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
 tendermint-proto                 = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }

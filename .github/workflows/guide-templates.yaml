@@ -6,6 +6,8 @@ on:
       - crates/relayer-cli/**
       - scripts/**
       - tools/check-guide/**
+      - Cargo.toml
+      - Cargo.lock
       - guide/src/templates/**
 
   push:
@@ -15,6 +17,8 @@ on:
       - crates/relayer-cli/**
       - scripts/**
       - tools/check-guide/**
+      - Cargo.toml
+      - Cargo.lock
       - guide/src/templates/**
 
 # Cancel previous runs of this workflow when a new commit is added to the PR, branch or tag
