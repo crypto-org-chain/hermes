@@ -6,7 +6,6 @@ use bitcoin::{
     network::Network,
 };
 use digest::Digest;
-use generic_array::{typenum::U32, GenericArray};
 use hdpath::StandardHDPath;
 use ripemd::Ripemd160;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
@@ -297,15 +296,11 @@ impl SigningKeyPair for Secp256k1KeyPair {
     // - https://github.com/evmos/ethermint/blob/main/crypto/ethsecp256k1/ethsecp256k1.go
     // - informalsystems/hermes#2863.
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>, Error> {
-        let hashed_message: GenericArray<u8, U32> = match self.address_type {
-            Secp256k1AddressType::Ethermint => keccak256_hash(message).into(),
-            Secp256k1AddressType::Cosmos => <[u8; 32]>::from(Sha256::digest(message)).into(),
+        let hashed_message: [u8; 32] = match self.address_type {
+            Secp256k1AddressType::Ethermint => keccak256_hash(message),
+            Secp256k1AddressType::Cosmos => Sha256::digest(message).into(),
         };
-
-        assert!(hashed_message.len() == 32);
-
-        // SAFETY: hashed_message is 32 bytes, as expected in `Message::from_slice`.
-        let message = Message::from_digest_slice(&hashed_message).unwrap();
+        let message = Message::from_digest(hashed_message);
 
         Ok(Secp256k1::signing_only()
             .sign_ecdsa(&message, &self.private_key)
@@ -315,5 +310,48 @@ impl SigningKeyPair for Secp256k1KeyPair {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use secp256k1::ecdsa::Signature;
+
+    use super::*;
+
+    const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
+    #[test]
+    fn sign_hashes_message_per_address_type() {
+        let hd_path = StandardHDPath::from_str("m/44'/118'/0'/0/0").unwrap();
+        let message = b"hermes";
+
+        let cases: [(Secp256k1AddressType, [u8; 32]); 2] = [
+            (Secp256k1AddressType::Cosmos, Sha256::digest(message).into()),
+            (Secp256k1AddressType::Ethermint, keccak256_hash(message)),
+        ];
+
+        for (address_type, expected_digest) in cases {
+            let key_pair = Secp256k1KeyPair::from_mnemonic_internal(
+                MNEMONIC,
+                &hd_path,
+                address_type,
+                "cosmos",
+            )
+            .unwrap();
+
+            let signature = key_pair.sign(message).unwrap();
+            assert_eq!(signature.len(), 64, "{address_type:?}");
+
+            Secp256k1::verification_only()
+                .verify_ecdsa(
+                    &Message::from_digest(expected_digest),
+                    &Signature::from_compact(&signature).unwrap(),
+                    &key_pair.public_key,
+                )
+                .unwrap_or_else(|e| panic!("{address_type:?}: {e}"));
+        }
     }
 }

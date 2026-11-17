@@ -38,7 +38,6 @@ ed25519-dalek                    = { workspace = true, features = ["serde"] }
 ed25519-dalek-bip32              = { workspace = true }
 flex-error                       = { workspace = true }
 futures                          = { workspace = true }
-generic-array                    = { workspace = true }
 hdpath                           = { workspace = true }
 hex                              = { workspace = true }
 http                             = { workspace = true }
