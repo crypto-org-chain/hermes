@@ -45,7 +45,6 @@ impl BinaryChannelTest for ErrorEventsTest {
                 &wallet_b.address(),
                 &denom_a.with_amount((balance_a_amount / 3) + 1).as_ref(),
                 Duration::from_secs(30),
-                // Namada batch transaction can't have the exact same message
                 Some(i.to_string()),
             )?;
             transfer_messages.push(transfer_message);
