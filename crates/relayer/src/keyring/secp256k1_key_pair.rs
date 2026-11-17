@@ -317,23 +317,27 @@ impl SigningKeyPair for Secp256k1KeyPair {
 mod tests {
     use core::str::FromStr;
 
-    use secp256k1::ecdsa::Signature;
-
     use super::*;
 
     const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
+    // Golden signatures produced by the generic-array based implementation; RFC6979 makes them deterministic.
     #[test]
-    fn sign_hashes_message_per_address_type() {
+    fn sign_matches_golden_signature_per_address_type() {
         let hd_path = StandardHDPath::from_str("m/44'/118'/0'/0/0").unwrap();
-        let message = b"hermes";
 
-        let cases: [(Secp256k1AddressType, [u8; 32]); 2] = [
-            (Secp256k1AddressType::Cosmos, Sha256::digest(message).into()),
-            (Secp256k1AddressType::Ethermint, keccak256_hash(message)),
+        let cases = [
+            (
+                Secp256k1AddressType::Cosmos,
+                "c7e4725451d6b6c18785fc35a753af59166d311c49dfc797f50deb2a7557dda429aca9578e5203cefcaae720d807b72875ee6bca0fbad5c5e39c376b9323f596",
+            ),
+            (
+                Secp256k1AddressType::Ethermint,
+                "9caf4a9e1fb29ff2cb6451a6516b511e3daf3c09fd06f6604090072ef2047f39092f4df64c7013e8599d0bbe7c7845102849103982e9e9adad83aa5b31d8a9bf",
+            ),
         ];
 
-        for (address_type, expected_digest) in cases {
+        for (address_type, expected_signature) in cases {
             let key_pair = Secp256k1KeyPair::from_mnemonic_internal(
                 MNEMONIC,
                 &hd_path,
@@ -342,16 +346,12 @@ mod tests {
             )
             .unwrap();
 
-            let signature = key_pair.sign(message).unwrap();
-            assert_eq!(signature.len(), 64, "{address_type:?}");
-
-            Secp256k1::verification_only()
-                .verify_ecdsa(
-                    &Message::from_digest(expected_digest),
-                    &Signature::from_compact(&signature).unwrap(),
-                    &key_pair.public_key,
-                )
-                .unwrap_or_else(|e| panic!("{address_type:?}: {e}"));
+            let signature = key_pair.sign(b"hermes").unwrap();
+            assert_eq!(
+                hex::encode(signature),
+                expected_signature,
+                "{address_type:?}"
+            );
         }
     }
 }
