@@ -1,0 +1,1 @@
+- Update MSRV to Rust 1.87, required by the `ml-dsa` crate.
