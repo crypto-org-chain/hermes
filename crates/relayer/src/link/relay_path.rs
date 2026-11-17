@@ -1702,21 +1702,19 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
                                 odata_info,
                             );
 
-                            let slot = timed_out
-                                .get_mut(odata_pos)
-                                .expect("timed_out vector is sized to match operational data");
-                            slot.get_or_insert_with(|| {
-                                OperationalData::new(
-                                    dst_current_height,
-                                    OperationalDataTarget::Source,
-                                    odata_tracking_id,
-                                    self.channel.connection_delay,
-                                )
-                            })
-                            .push(TransitMessage {
-                                event_with_height: gm.event_with_height.clone(),
-                                msg: new_msg,
-                            });
+                            timed_out[odata_pos]
+                                .get_or_insert_with(|| {
+                                    OperationalData::new(
+                                        dst_current_height,
+                                        OperationalDataTarget::Source,
+                                        odata_tracking_id,
+                                        self.channel.connection_delay,
+                                    )
+                                })
+                                .push(TransitMessage {
+                                    event_with_height: gm.event_with_height,
+                                    msg: new_msg,
+                                });
                         } else {
                             // A SendPacket event, but did not time-out yet, retain
                             retain_batch.push(gm);
