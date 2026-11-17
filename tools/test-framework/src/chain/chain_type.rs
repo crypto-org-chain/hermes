@@ -54,9 +54,14 @@ impl ChainType {
         let mut res = vec![];
         let json_rpc_port = random_unused_tcp_port();
         match self {
-            Self::Cosmos { dynamic_fee: _ } | Self::Injective | Self::Provenance => {}
+            Self::Cosmos { dynamic_fee: _ } | Self::Provenance => {}
             Self::Osmosis => {
                 res.push("--reject-config-defaults".to_owned());
+            }
+            // The nix-built injectived has no wasmvm entry in its Go build info, so wasmd's
+            // libwasmvm version check fails with "wasmvm module not exist" and aborts startup.
+            Self::Injective => {
+                res.push("--wasm.skip_wasmvm_version_check".to_owned());
             }
             Self::Evmos => {
                 res.push("--json-rpc.address".to_owned());
@@ -112,5 +117,30 @@ impl FromStr for ChainType {
             name if name.contains("osmosisd") => Ok(ChainType::Osmosis),
             _ => Ok(ChainType::Cosmos { dynamic_fee: false }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extra_start_args() {
+        let test_cases = [
+            ("gaiad", vec![]),
+            ("simd", vec![]),
+            ("provenanced", vec![]),
+            ("osmosisd", vec!["--reject-config-defaults"]),
+            ("injectived", vec!["--wasm.skip_wasmvm_version_check"]),
+        ];
+
+        for (command, expected) in test_cases {
+            let args = ChainType::from_str(command).unwrap().extra_start_args();
+            assert_eq!(args, expected, "unexpected start args for {command}");
+        }
+
+        let evmos_args = ChainType::from_str("evmosd").unwrap().extra_start_args();
+        assert_eq!(evmos_args.len(), 2);
+        assert_eq!(evmos_args[0], "--json-rpc.address");
     }
 }
