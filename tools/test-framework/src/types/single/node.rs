@@ -185,7 +185,7 @@ impl FullNode {
                 gas_multiplier: Some(GasMultiplier::unsafe_new(1.5)),
                 dynamic_gas_price,
                 fee_granter: None,
-                max_msg_num: Default::default(),
+                max_msg_num: chain_type.max_msg_num(),
                 max_tx_size: Default::default(),
                 max_grpc_decoding_size: config::default::max_grpc_decoding_size(),
                 query_packets_chunk_size: config::default::query_packets_chunk_size(),
