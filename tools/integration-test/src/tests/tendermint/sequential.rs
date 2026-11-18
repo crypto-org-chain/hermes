@@ -22,15 +22,6 @@ pub struct SequentialCommitTest;
 
 impl TestOverrides for SequentialCommitTest {
     fn modify_node_config(&self, config: &mut toml::Value) -> Result<(), Error> {
-        let config = if let Some(config) = config.get_mut("ledger") {
-            // Namada
-            config
-                .get_mut("cometbft")
-                .ok_or_else(|| eyre!("expect cometbft section"))?
-        } else {
-            config
-        };
-
         config::cosmos::set_timeout_commit(config, BLOCK_TIME)?;
         config::cosmos::set_timeout_propose(config, BLOCK_TIME)?;
 
@@ -85,7 +76,6 @@ impl BinaryChannelTest for SequentialCommitTest {
                     &wallet_b.address(),
                     &denom_a.with_amount(100u64).as_ref(),
                     Duration::from_secs(30),
-                    // Namada batch transaction can't have the exact same message
                     Some(i.to_string()),
                 )?;
                 transfer_messages.push(transfer_message);
@@ -127,7 +117,6 @@ impl BinaryChannelTest for SequentialCommitTest {
                     &wallet_a.address(),
                     &denom_b.with_amount(100u64).as_ref(),
                     Duration::from_secs(30),
-                    // Namada batch transaction can't have the exact same message
                     Some(i.to_string()),
                 )?;
                 transfer_messages.push(transfer_message);

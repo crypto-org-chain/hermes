@@ -188,11 +188,7 @@ impl ChainDriver {
         as it requires the `"tcp://"` scheme.
     */
     pub fn rpc_listen_address(&self) -> String {
-        if self.command_path == "namada" {
-            format!("http://localhost:{}", self.rpc_port)
-        } else {
-            format!("tcp://localhost:{}", self.rpc_port)
-        }
+        format!("tcp://localhost:{}", self.rpc_port)
     }
 
     /**

@@ -151,13 +151,6 @@ impl Denom {
         }
     }
 
-    pub fn namada_display_name(&self) -> String {
-        match self {
-            Denom::Base { display_name, .. } => display_name.to_string(),
-            Denom::Ibc { path, denom, .. } => format!("{path}/{}", denom.namada_display_name()),
-        }
-    }
-
     pub fn as_str(&self) -> &str {
         match self {
             Denom::Base { display_name, .. } => display_name,

@@ -81,10 +81,6 @@ pub trait TestOverrides {
         // No modification by default
     }
 
-    fn namada_modify_parameter_file(&self, _parameter: &mut toml::Value) -> Result<(), Error> {
-        Ok(())
-    }
-
     /// Returns the settings for the foreign client on the first chain for the
     /// second chain. The defaults are for a client connecting two Cosmos chains
     /// with no custom settings.
