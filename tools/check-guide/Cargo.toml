@@ -11,3 +11,13 @@ lazy_static     = "1.4.0"
 mdbook-template = "1.1.0"
 regex           = "1"
 walkdir         = "2.3.3"
+
+[patch.crates-io]
+# ML-DSA-65 validator keys: cometbft/tendermint-rs#1533 backported onto v0.40.4.
+# Keep in sync with the root Cargo.toml; testgen is left out because check-guide does not use it.
+tendermint                       = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
+tendermint-rpc                   = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
+tendermint-proto                 = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
+tendermint-light-client          = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
+tendermint-light-client-verifier = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }
+tendermint-light-client-detector = { git = "https://github.com/JayT106/tendermint-rs.git", rev = "abbf51ca" }

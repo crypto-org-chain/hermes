@@ -146,3 +146,116 @@ impl From<Header> for RawHeader {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ibc_proto::google::protobuf::Any;
+    use ibc_proto::Protobuf;
+    use serde_json::Value;
+    use tendermint::block::CommitSig;
+    use tendermint::{PublicKey, Signature};
+    use tendermint_light_client_verifier::errors::VerificationErrorDetail;
+    use tendermint_light_client_verifier::types::UntrustedBlockState;
+    use tendermint_light_client_verifier::{ProdVerifier, Verdict};
+    use test_log::test;
+
+    use super::{Header, ValidatorSet};
+    use crate::Height;
+
+    // A CometBFT v0.40.0 block signed by one ML-DSA-65 and one Ed25519 validator,
+    // copied from tendermint-rs `tendermint/tests/support/mldsa65`.
+    const MLDSA65_FIXTURE: &str = include_str!("../../../tests/support/mldsa65/fixture.json");
+
+    fn mldsa65_header() -> Header {
+        let fixture: Value = serde_json::from_str(MLDSA65_FIXTURE).unwrap();
+        let light_block = &fixture["light_block"];
+        let validator_set: ValidatorSet =
+            serde_json::from_value(light_block["validator_set"].clone()).unwrap();
+        Header {
+            signed_header: serde_json::from_value(light_block["signed_header"].clone()).unwrap(),
+            trusted_height: Height::new(0, 1).unwrap(),
+            trusted_validator_set: validator_set.clone(),
+            validator_set,
+        }
+    }
+
+    fn flip_mldsa65_signature_bit(header: &mut Header) {
+        let mldsa65_address = header
+            .validator_set
+            .validators()
+            .iter()
+            .find(|v| matches!(v.pub_key, PublicKey::MlDsa65(_)))
+            .unwrap()
+            .address;
+
+        let signature = header
+            .signed_header
+            .commit
+            .signatures
+            .iter_mut()
+            .find_map(|sig| match sig {
+                CommitSig::BlockIdFlagCommit {
+                    validator_address,
+                    signature: Some(signature),
+                    ..
+                } if *validator_address == mldsa65_address => Some(signature),
+                _ => None,
+            })
+            .unwrap();
+        let mut bytes = signature.clone().into_bytes();
+        bytes[0] ^= 0x01;
+        *signature = Signature::try_from(bytes).unwrap();
+    }
+
+    struct TestCase {
+        name: &'static str,
+        malleate: fn(&mut Header),
+        expect_verdict: fn(&Verdict) -> bool,
+    }
+
+    #[test]
+    fn mldsa65_header_verifies_after_update_client_encoding() {
+        let cases = [
+            TestCase {
+                name: "valid commit",
+                malleate: |_| {},
+                expect_verdict: |v| *v == Verdict::Success,
+            },
+            TestCase {
+                name: "tampered ML-DSA-65 signature",
+                malleate: flip_mldsa65_signature_bit,
+                expect_verdict: |v| {
+                    matches!(
+                        v,
+                        Verdict::Invalid(VerificationErrorDetail::InvalidSignature(_))
+                    )
+                },
+            },
+        ];
+
+        for TestCase {
+            name,
+            malleate,
+            expect_verdict,
+        } in cases
+        {
+            let mut header = mldsa65_header();
+            malleate(&mut header);
+
+            // MsgUpdateClient carries the header as an Any; verify what the counterparty decodes.
+            let encoded = Protobuf::<Any>::encode_vec(header.clone());
+            let decoded = <Header as Protobuf<Any>>::decode_vec(&encoded).unwrap();
+            assert_eq!(
+                decoded, header,
+                "{name}: header changed through Any encoding"
+            );
+
+            let verdict = ProdVerifier::default().verify_commit(&UntrustedBlockState {
+                signed_header: &decoded.signed_header,
+                validators: &decoded.validator_set,
+                next_validators: None,
+            });
+            assert!(expect_verdict(&verdict), "{name}: {verdict:?}");
+        }
+    }
+}
