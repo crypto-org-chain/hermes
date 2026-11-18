@@ -6,8 +6,6 @@ use bitcoin::{
     network::Network,
 };
 use digest::Digest;
-#[allow(deprecated)]
-use generic_array::{typenum::U32, GenericArray};
 use hdpath::StandardHDPath;
 use ripemd::Ripemd160;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
@@ -298,16 +296,11 @@ impl SigningKeyPair for Secp256k1KeyPair {
     // - https://github.com/evmos/ethermint/blob/main/crypto/ethsecp256k1/ethsecp256k1.go
     // - informalsystems/hermes#2863.
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>, Error> {
-        #[allow(deprecated)]
-        let hashed_message: GenericArray<u8, U32> = match self.address_type {
-            Secp256k1AddressType::Ethermint => keccak256_hash(message).into(),
-            Secp256k1AddressType::Cosmos => Sha256::digest(message),
+        let hashed_message: [u8; 32] = match self.address_type {
+            Secp256k1AddressType::Ethermint => keccak256_hash(message),
+            Secp256k1AddressType::Cosmos => Sha256::digest(message).into(),
         };
-
-        assert!(hashed_message.len() == 32);
-
-        // SAFETY: hashed_message is 32 bytes, as expected in `Message::from_slice`.
-        let message = Message::from_digest_slice(&hashed_message).unwrap();
+        let message = Message::from_digest(hashed_message);
 
         Ok(Secp256k1::signing_only()
             .sign_ecdsa(&message, &self.private_key)
@@ -317,5 +310,48 @@ impl SigningKeyPair for Secp256k1KeyPair {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::str::FromStr;
+
+    use super::*;
+
+    const MNEMONIC: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
+    // Golden signatures produced by the generic-array based implementation; RFC6979 makes them deterministic.
+    #[test]
+    fn sign_matches_golden_signature_per_address_type() {
+        let hd_path = StandardHDPath::from_str("m/44'/118'/0'/0/0").unwrap();
+
+        let cases = [
+            (
+                Secp256k1AddressType::Cosmos,
+                "c7e4725451d6b6c18785fc35a753af59166d311c49dfc797f50deb2a7557dda429aca9578e5203cefcaae720d807b72875ee6bca0fbad5c5e39c376b9323f596",
+            ),
+            (
+                Secp256k1AddressType::Ethermint,
+                "9caf4a9e1fb29ff2cb6451a6516b511e3daf3c09fd06f6604090072ef2047f39092f4df64c7013e8599d0bbe7c7845102849103982e9e9adad83aa5b31d8a9bf",
+            ),
+        ];
+
+        for (address_type, expected_signature) in cases {
+            let key_pair = Secp256k1KeyPair::from_mnemonic_internal(
+                MNEMONIC,
+                &hd_path,
+                address_type,
+                "cosmos",
+            )
+            .unwrap();
+
+            let signature = key_pair.sign(b"hermes").unwrap();
+            assert_eq!(
+                hex::encode(signature),
+                expected_signature,
+                "{address_type:?}"
+            );
+        }
     }
 }
