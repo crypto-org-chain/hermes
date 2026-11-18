@@ -1,4 +1,3 @@
-use alloc::collections::BTreeMap as HashMap;
 use alloc::collections::VecDeque;
 use ibc_relayer_types::core::ics04_channel::packet::Sequence;
 use std::ops::Sub;
@@ -1680,19 +1679,18 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
         // to source operational data.
         let mut all_dst_odata = self.dst_operational_data.clone_vec();
 
-        let mut timed_out: HashMap<usize, OperationalData> = HashMap::default();
+        let mut timed_out: Vec<OperationalData> = Vec::new();
 
         // For each operational data targeting the destination chain...
-        for (odata_pos, odata) in all_dst_odata.iter_mut().enumerate() {
+        for odata in all_dst_odata.iter_mut() {
             // ... check each `SendPacket` event, whether it should generate a timeout message
-            let mut retain_batch = vec![];
+            let mut retain_batch = Vec::with_capacity(odata.batch.len());
+            let mut timed_out_batch: Option<OperationalData> = None;
+            let odata_info = odata.info();
+            let odata_tracking_id = odata.tracking_id;
 
-            for gm in odata.batch.iter() {
-                let TransitMessage {
-                    event_with_height, ..
-                } = gm;
-
-                match &event_with_height.event {
+            for gm in odata.batch.drain(..) {
+                match &gm.event_with_height.event {
                     IbcEvent::SendPacket(event) => {
                         // Catch any SendPacket event that timed-out
                         if self.send_packet_event_handled(event)? {
@@ -1702,41 +1700,41 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
                         {
                             debug!(
                                 "found a timed-out message in the operational data: {}",
-                                odata.info(),
+                                odata_info,
                             );
 
-                            timed_out
-                                .entry(odata_pos)
-                                .or_insert_with(|| {
+                            timed_out_batch
+                                .get_or_insert_with(|| {
                                     OperationalData::new(
                                         dst_current_height,
                                         OperationalDataTarget::Source,
-                                        odata.tracking_id,
+                                        odata_tracking_id,
                                         self.channel.connection_delay,
                                     )
                                 })
                                 .push(TransitMessage {
-                                    event_with_height: event_with_height.clone(),
+                                    event_with_height: gm.event_with_height,
                                     msg: new_msg,
                                 });
                         } else {
                             // A SendPacket event, but did not time-out yet, retain
-                            retain_batch.push(gm.clone());
+                            retain_batch.push(gm);
                         }
                     }
                     IbcEvent::WriteAcknowledgement(event) => {
                         if self.write_ack_event_handled(event)? {
                             debug!(?event, "WriteAcknowledgement has already been handled");
                         } else {
-                            retain_batch.push(gm.clone());
+                            retain_batch.push(gm);
                         }
                     }
-                    _ => retain_batch.push(gm.clone()),
+                    _ => retain_batch.push(gm),
                 }
             }
 
             // Update the whole batch, keeping only the relevant ones
             odata.batch = retain_batch;
+            timed_out.extend(timed_out_batch);
         }
 
         // Possibly some op. data became empty (if no events were kept).
@@ -1753,7 +1751,7 @@ impl<ChainA: ChainHandle, ChainB: ChainHandle> RelayPath<ChainA, ChainB> {
         }
 
         // Schedule new operational data targeting the source chain
-        for (_, new_od) in timed_out.into_iter() {
+        for new_od in timed_out {
             info!(
                 "re-scheduling from new timed-out batch of size {}",
                 new_od.batch.len()

@@ -1,4 +1,5 @@
 use core::str::FromStr;
+use ibc_relayer::config::types::MaxMsgNum;
 use ibc_relayer::config::AddressType;
 use ibc_relayer_types::core::ics24_host::identifier::ChainId;
 
@@ -54,9 +55,14 @@ impl ChainType {
         let mut res = vec![];
         let json_rpc_port = random_unused_tcp_port();
         match self {
-            Self::Cosmos { dynamic_fee: _ } | Self::Injective | Self::Provenance => {}
+            Self::Cosmos { dynamic_fee: _ } | Self::Provenance => {}
             Self::Osmosis => {
                 res.push("--reject-config-defaults".to_owned());
+            }
+            // The nix-built injectived has no wasmvm entry in its Go build info, so wasmd's
+            // libwasmvm version check fails with "wasmvm module not exist" and aborts startup.
+            Self::Injective => {
+                res.push("--wasm.skip_wasmvm_version_check".to_owned());
             }
             Self::Evmos => {
                 res.push("--json-rpc.address".to_owned());
@@ -96,6 +102,17 @@ impl ChainType {
     pub fn enable_dynamic_fee(&self) -> bool {
         matches!(self, Self::Cosmos { dynamic_fee } if *dynamic_fee)
     }
+
+    pub fn max_msg_num(&self) -> MaxMsgNum {
+        match self {
+            Self::Cosmos { dynamic_fee: _ } | Self::Osmosis | Self::Evmos | Self::Provenance => {
+                MaxMsgNum::default()
+            }
+            // A 30-message recv-packet tx on injectived v1.13 simulates to ~3.1M gas,
+            // over the 3M max_gas of the test relayer config.
+            Self::Injective => MaxMsgNum::new(20).expect("20 is within MaxMsgNum bounds"),
+        }
+    }
 }
 
 impl FromStr for ChainType {
@@ -111,6 +128,50 @@ impl FromStr for ChainType {
             name if name.contains("provenanced") => Ok(ChainType::Provenance),
             name if name.contains("osmosisd") => Ok(ChainType::Osmosis),
             _ => Ok(ChainType::Cosmos { dynamic_fee: false }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extra_start_args() {
+        let test_cases = [
+            ("gaiad", vec![]),
+            ("simd", vec![]),
+            ("provenanced", vec![]),
+            ("osmosisd", vec!["--reject-config-defaults"]),
+            ("injectived", vec!["--wasm.skip_wasmvm_version_check"]),
+        ];
+
+        for (command, expected) in test_cases {
+            let args = ChainType::from_str(command).unwrap().extra_start_args();
+            assert_eq!(args, expected, "unexpected start args for {command}");
+        }
+
+        let evmos_args = ChainType::from_str("evmosd").unwrap().extra_start_args();
+        assert_eq!(evmos_args.len(), 2);
+        assert_eq!(evmos_args[0], "--json-rpc.address");
+    }
+
+    #[test]
+    fn max_msg_num() {
+        let test_cases = [
+            ("gaiad", 30),
+            ("simd", 30),
+            ("evmosd", 30),
+            ("injectived", 20),
+        ];
+
+        for (command, expected) in test_cases {
+            let max_msg_num = ChainType::from_str(command).unwrap().max_msg_num();
+            assert_eq!(
+                max_msg_num.to_usize(),
+                expected,
+                "unexpected max_msg_num for {command}"
+            );
         }
     }
 }
